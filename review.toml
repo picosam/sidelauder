@@ -1,0 +1,88 @@
+# loupe review configuration for Sidelauder.
+#
+# Onboarded 2026-09-29 from loupe's docs/onboarding.md (loupe 0.28.0).
+# `loupe handoff`, `take` and `validate --from-target` read this file from
+# the reviewed commit itself, so every rule a round is judged by is here.
+
+# The oldest loupe that reads this file as written. Move it only with a
+# CHANGELOG read (loupe docs/upgrading.md).
+[tool]
+requires = "0.28.0"
+
+[taxonomy]
+severities = ["Blocker", "High", "Medium", "Low", "Info"]
+# Findings at these severities must carry a falsification test and cannot be
+# deferred or set aside as preference.
+blocking = ["Blocker", "High"]
+# Each classification traces to a failure this project has already recorded:
+# docs/spec.md Appendix D (the v0.1 -> v0.2 challenge), §2.3 (invariants) and
+# §7.0 (the foundation rule), plus the rule that nothing about the first
+# user's Mac or accounts enters this public tree.
+classifications = [
+    "factual_error",
+    "internal_contradiction",
+    "design_gap",
+    "unsupported_claim",
+    "invariant_breach",
+    "disclosure",
+    "process_defect",
+]
+
+[taxonomy.classification_notes]
+factual_error = "a claim about macOS, Claude Desktop or claude-multiprofile that is false (v0.1's 'reads no token files')"
+internal_contradiction = "the spec, the code or a spike report contradicts itself (v0.1 defined Solo two ways)"
+design_gap = "a mechanism named but not provided, or one that cannot work as written (v0.1's rename migration could never match)"
+unsupported_claim = "a claim, number or verdict with no evidence or measurement behind it, not yet shown false (v0.1's estimates)"
+invariant_breach = "code or plan that crosses a spec §2.3 invariant or re-derives what claude-multiprofile owns (§7.0)"
+disclosure = "a fact about the first user's Mac, accounts or profiles, or any personal identifier, reaching this public tree"
+process_defect = "the author's own execution failed a gate or skipped this repository's procedure"
+
+# The gate manifest: what this repository can honestly attest at the handed-
+# off commit. `handoff` runs each command itself, in the repo root.
+#
+# The repository has no single check runner yet, so each real check is listed
+# on its own. A gate is added in the same commit as the thing it checks, never
+# before.
+
+# Range-sensitive, so it runs locally and is never CI-attested: CI would run
+# it without the review base.
+[[gates]]
+id = "whitespace"
+command = ["sh", "-c", "git diff --check \"$LOUPE_GATE_BASE\" \"$LOUPE_GATE_HEAD\""]
+blocking = true
+
+# Temporary, for round 1 only (onboarding §2): proves the subprocess
+# environment the gates run in. Read its attestation in the first request,
+# then delete this gate.
+[[gates]]
+id = "env-probe"
+command = ["python3", "-c", "import os,sys; sys.exit(1 if 'PYTHONSAFEPATH' in os.environ else 0)"]
+blocking = false
+
+[roles]
+author = "claude"
+reviewer = "codex"
+# A person carries each envelope, except inside an agent-relayed review
+# window the operator granted for one lineage (AGENTS.md, "Review").
+relay = "user"
+permitted_authors = ["claude", "codex"]
+permitted_reviewers = ["claude", "codex"]
+# Surfaces that cannot write their own verdict bytes to a file.
+rejected_reviewers = ["gemini", "antigravity"]
+# main carries no branch protection and the owner is the only collaborator,
+# so no required approving review could ever be satisfied. Work goes through
+# a branch and a pull request; the owner approves by merging after a clean
+# verdict on the exact reviewed SHA (AGENTS.md, "Merging"). Read live
+# 2026-09-29: no ruleset, no branch rule on main.
+enforcement = "none"
+review_default = "on"
+# Both sides run on the owner's Mac and read the same filesystem
+# (picosam, 2026-09-29).
+transport = "path"
+# Reviewer attention stays on the change, not on loupe (picosam, 2026-09-29).
+debug = false
+
+[limits]
+round_cap = 3
+# No measurement exists for this repository yet (picosam, 2026-09-29).
+# decided: limits.token_budget undeclared
