@@ -51,6 +51,31 @@ id = "whitespace"
 command = ["sh", "-c", "git diff --check \"$LOUPE_GATE_BASE\" \"$LOUPE_GATE_HEAD\""]
 blocking = true
 
+# The interim adapter (App/Sidelauder/upstream-status.mjs, spec §8.1.3).
+# Needs `node` on PATH, nothing else.
+[[gates]]
+id = "adapter-unit"
+command = ["node", "--test", "Tests/Adapter/unit.test.mjs", "Tests/Adapter/foundation.test.mjs"]
+blocking = true
+
+# Runs the adapter through the INSTALLED claude-multiprofile, with fixtures in
+# a throwaway HOME. Environment-dependent by nature: the adapter exists only
+# to read the installed upstream, so this gate fails, rather than skips, on a
+# machine without it. Full form, blocking, chosen deliberately: a hand-off is
+# a completion claim, and every hand-off is emitted from the maintainer's Mac,
+# where upstream is installed. Needs node, osacompile and PlistBuddy (macOS).
+[[gates]]
+id = "adapter-upstream"
+command = ["node", "--test", "Tests/Adapter/upstream.test.mjs"]
+blocking = true
+
+# Every guard in the adapter has a mutation that must turn a test red; the
+# unmutated copy runs first as the control. About 20 s.
+[[gates]]
+id = "adapter-mutations"
+command = ["node", "Tests/Adapter/mutate.mjs"]
+blocking = true
+
 # Temporary, for round 1 only (onboarding §2): proves the subprocess
 # environment the gates run in. Read its attestation in the first request,
 # then delete this gate.
