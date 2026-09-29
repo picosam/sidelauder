@@ -87,16 +87,49 @@ def s3(rows):
                   f"{r['actual'].get('w', 0):.0f}×{r['actual'].get('h', 0):.0f}")
 
 
+def quiet_from(samples, pct=5, window=3):
+    """The start of the first `window`-second stretch whose median CPU is under
+    `pct`: the end of the work. Idle Claude sits at 1-4 %; hidden streaming at
+    about 10 %, so a higher threshold ends a hidden run at its start."""
+    for r in samples:
+        w = [x["cpuPct"] for x in samples if r["sample"] <= x["sample"] < r["sample"] + window]
+        if len(w) >= window * 3 and statistics.median(w) < pct:
+            return r["sample"]
+    return None
+
+
 def s14(rows):
-    ends = [r for r in rows if r.get("spike") == "S14" and r.get("event") == "end"]
-    starts = [r for r in rows if r.get("spike") == "S14" and r.get("event") == "start"]
-    print("| Kind | Condition | Applied | Revealed at s | Still streaming at reveal | Finish mark at s | CPU quiet from s | CPU median / p95 % |")
-    print("|---|---|---|---|---|---|---|---|")
-    for e, st in zip(ends, starts):
+    runs, cur = [], None
+    for r in rows:
+        if r.get("spike") != "S14":
+            continue
+        if r.get("event") == "start":
+            cur = {"start": r, "samples": []}
+        elif "sample" in r and cur is not None:
+            cur["samples"].append(r)
+        elif r.get("event") == "revealed" and cur is not None:
+            cur["revealed"] = r
+        elif r.get("event") == "end" and cur is not None:
+            cur["end"] = r
+            runs.append(cur)
+            cur = None
+    print("| Kind | Condition | Applied | Revealed at s | A in front at reveal | Still streaming at reveal | "
+          "Finish mark at s | Work ended at s (CPU) | CPU median before the end % |")
+    print("|---|---|---|---|---|---|---|---|---|")
+    for run in runs:
+        e, st, rv = run["end"], run["start"], run.get("revealed", {})
         applied = ", ".join(f"{k}={v}" for k, v in st.get("applied", {}).items() if k != "setFrame") or "–"
+        q = quiet_from(run["samples"])
+        busy = [x["cpuPct"] for x in run["samples"] if q is None or x["sample"] < q]
         print(f"| {e['kind']} | {e['condition']} | {applied} | {e.get('revealedS') or '–'} | "
-              f"{'yes' if e.get('stillStreamingAtReveal') else 'no'} | {e.get('finishedS')} | {e.get('cpuEndS', '–')} | "
-              f"{e.get('cpuPctMedian')} / {e.get('cpuPctP95')} |")
+              f"{'–' if not rv else ('yes' if rv.get('aFront') else 'no')} | "
+              f"{'yes' if e.get('stillStreamingAtReveal') else 'no'} | {e.get('finishedS')}"
+              f"{' (stopped)' if e.get('stoppedEarly') else ''} | {fmt1(q)} | "
+              f"{fmt1(statistics.median(busy)) if busy else '–'} |")
+
+
+def fmt1(x):
+    return "–" if x is None else f"{x:.1f}"
 
 
 def s15(rows):
