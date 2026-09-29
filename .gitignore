@@ -1,0 +1,5 @@
+# Build products
+.build/
+spikes/.build/
+spikes/build/
+.DS_Store
