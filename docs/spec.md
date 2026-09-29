@@ -6,7 +6,7 @@
 |---|---|
 | Document | Product and technical specification, v0.3 **draft** (after the M0 spikes; what M0 changed is Appendix E, the v0.1 challenge Appendix D) |
 | Date | 2026-09-29 |
-| Status | **Draft for the operator. M0 partly run: S16, S1, S2 and S3 have results (`docs/spikes/`); S14, S15 and the real-input S1 check wait for the operator. D-06 waits on S14; D-03 and D-11 are decided subject to the operator (§18)** |
+| Status | **Draft for the operator. M0 partly run: S16, S1, S2 and S3 have results (`docs/spikes/`); S14, S15 and the real-input S1 check wait for the operator. D-06 waits on S14; D-03, D-11 and the bundling question under D-20 ruled by the operator (§18)** |
 | Name | **Sidelauder** (D-01, ruled 2026-09-29). It replaced the working name *Switchyard*, which NVIDIA's LLM traffic router holds in the same field (E30). It does not contain "Claude" or "Anthropic"; its resemblance to "Claude" is an accepted, recorded risk (R7) |
 | Foundation | **`claude-multiprofile` is the foundation.** Sidelauder re-implements none of its profile knowledge and reads it through one read-only interface (§7.0, §8.1) |
 | Scope | macOS companion app. Two modes in the **same first public release**: **Mode A: Floating rail** (no special permission) and **Mode B: Docked rail** (Accessibility permission). Built in stages: M1a delivers the shared core, Mode A and the slot handoff; M1b adds the rail that follows the window (§16.2) |
@@ -1059,10 +1059,10 @@ The operator's M0 prompt scoped this run to S16, then S1 to S3, S14 and S15. Rep
 | Spike | Verdict | Numbers | Consequence |
 |---|---|---|---|
 | S16 | **Pass** | Agrees with `list`, `doctor` and the live process table on every state shown; the rest through upstream's functions on fixtures. 124 ms per call (`--full` 281 ms). Discovery 20/20 from Dock-style launches, 95 ms | §8.1 rewritten around the adapter as built; §6.7 gains the interactive probe and the kill; bundling rejected (D-20) |
-| S1 | **Pass on synthetic input**; real input pending | Every rung 50/50 from an app without Accessibility; click to front 39 / 55 ms, hotkey 38 / 45 ms (p50 / p95); step 2 349 / 434 ms | §9.7 stands; D-03 forbid; launchers never opened with a modifier held (§9.6) |
+| S1 | **Pass on synthetic input**; real input pending | Every rung 50/50 from an app without Accessibility; click to front 39 / 55 ms, hotkey 38 / 45 ms (p50 / p95); step 2 349 / 434 ms | §9.7 stands; D-03 ruled: forbid; launchers never opened with a modifier held (§9.6) |
 | S2 | **Pass** | 50/50; hide 3 / 7 ms, unhide 2 / 6 ms; both calls return false while working | Solo is sound from Mode A; confirm by notification (§9.8) |
 | S3 | **Accuracy pass**; flicker verdict at M1a | 100/100 within 1 pt; minimum window 600 × 400 pt; ordering 2 never showed the target outside the slot (0/50), ordering 1 did in 8 of 20 relocations; 2–4 in-between frames on a resize in both | Ordering 2 adopted (D-22); M1a exit gains the operator's flicker verdict |
-| S13 | Partial | All defaults register; no enabled macOS shortcut collides | D-11 decided; Claude's own shortcuts checked at M1a's start |
+| S13 | Partial | All defaults register; no enabled macOS shortcut collides | D-11 ruled; Claude's own shortcuts checked at M1a's start |
 | S11 | Observed | Grant held across about a dozen rebuilds with a development certificate; an ad-hoc build's entry did not carry over | Phase 0 signs stably from the first build (§14.2) |
 | S14 | **Pending** (operator) | — | D-06 waits on it |
 | S15 | **Pending** (operator) | — | — |
@@ -1073,7 +1073,7 @@ Not run in M0: S4, S6, S7, S9, S10 and S12. The attached-rail parts of S4 and S1
 
 | Milestone | Content | Exit criteria |
 |---|---|---|
-| M0 Spikes and foundation | Name (D-01, done); the public repository created with §11 P1–P3 in its first commit (done); the upstream issue opened (operator's act, Appendix C); the interim adapter (done); S16, S1–S3, S14 and S15 (§16.1.1) | Every M0 spike has a result (S14, S15 and S1's real-input check outstanding); this spec revised (v0.3, draft); D-03 and D-11 decided, D-06 once S14 has run |
+| M0 Spikes and foundation | Name (D-01, done); the public repository created with §11 P1–P3 in its first commit (done); the upstream issue opened (operator's act, Appendix C); the interim adapter (done); S16, S1–S3, S14 and S15 (§16.1.1) | Every M0 spike has a result (S14, S15 and S1's real-input check outstanding); this spec revised (v0.3, draft); D-03 and D-11 ruled, D-06 once S14 has run |
 | M1a Personal alpha | S6, S7, S9, S10 (floating rail), S12 and the rest of S13 first; shared core, Mode A, slot handoff with the floating rail (F-B1, F-B3, F-B6), keep visible, sign-in assistant, onboarding, diagnostics, Phase 0 signing | §12 targets met on macOS 27; guard suite and mutation runner green; 500-switch soak clean; the operator's flicker verdict on the real rail (S3); one week of daily use with no stuck-hidden or wrong-instance events |
 | M1b Attached rail | F-B2 (rail follows the window), F-B4 (make room); S4 and S10 for the attached rail | Rail-follow target (§12) met, or hide-during-drag in place; one more week of daily use |
 | M2 First release (beta) | Developer ID + notarization; own tap; README; SECURITY.md; §11 re-checked; macOS 26 runs of S1–S3 and S9 | Clean install on a fresh macOS 26 and 27 machine; §11 all ✅ |
@@ -1130,7 +1130,7 @@ Implementer time, in focused working days: M0 4–6, M1a 8–12, M1b 4–6, M2 4
 |---|---|---|---|
 | D-01 | Product name and whether to contact Anthropic pre-launch | Non-"Claude" name + referential tagline / ask Anthropic / both | **Name ruled 2026-09-29: Sidelauder** (the working name "Switchyard" is taken in the field, E30; the resemblance to "Claude" is an accepted risk under R7). Whether to ask Anthropic before M2 stays open (P7) |
 | D-02 | Home | Separate repo / inside upstream / fork | **Ruled 2026-09-29:** separate repository, public from its first commit, on upstream's interface (§15) |
-| D-03 | Private-API activation fallback | Forbid / opt-in setting | **Decided 2026-09-29 on S1, for the operator to confirm:** forbid in v1. Every public route worked 50/50 on synthetic input; reopens only if the operator's real-input check fails |
+| D-03 | Private-API activation fallback | Forbid / opt-in setting | **Ruled 2026-09-29 (operator), on S1:** forbid in v1. Every public route worked 50/50 on synthetic input; reopens only if the operator's real-input check fails |
 | D-04 | Minimum macOS | 14 / 15 / 26 | **Ruled 2026-09-29:** 26 |
 | D-05 | First-run mode | Auto / A / B | Recommendation: Auto |
 | D-06 | Default policy | Solo / Stack | **Open, put to the operator:** waits on S14 (pending). S2 shows Solo's hiding works from Mode A (50/50). Recommendation unchanged: Solo in both modes, unless S14 shows hidden instances stall |
@@ -1138,7 +1138,7 @@ Implementer time, in focused working days: M0 4–6, M1a 8–12, M1b 4–6, M2 4
 | D-08 | Read `lastKnownAccountUuid` | On / Off | **Superseded 2026-09-29** by the foundation rule: Sidelauder reads no account data; upstream reports shared accounts (§8.5) |
 | D-09 | Default avatar | Initials / app icon | Recommendation: Initials (trademark-safe) |
 | D-10 | Updates | None / opt-in Sparkle | Recommendation: None in v1 |
-| D-11 | Hotkey defaults | ⌃⌥digits / ⌘⌥digits / unset | **Decided 2026-09-29, for the operator to confirm:** ⌃⌥1…9, ⌃⌥] / ⌃⌥[, ⌃⌥Tab, ⌃⌥0 (§6.5). All register and none collides with an enabled macOS shortcut (S13, partial); launches from them wait for the modifiers' release (§9.6). Claude Desktop's own shortcuts are checked at M1a's start |
+| D-11 | Hotkey defaults | ⌃⌥digits / ⌘⌥digits / unset | **Ruled 2026-09-29 (operator):** ⌃⌥1…9, ⌃⌥] / ⌃⌥[, ⌃⌥Tab, ⌃⌥0 (§6.5). All register and none collides with an enabled macOS shortcut (S13, partial); launches from them wait for the modifiers' release (§9.6). Claude Desktop's own shortcuts are checked at M1a's start |
 | D-12 | License | MIT / Apache-2.0 | Recommendation: MIT (matches upstream) |
 | D-13 | Launch at login | Offered, off / on | Recommendation: Offered, off |
 | D-14 | Default profile in rail | Yes / No | Recommendation: Yes |
@@ -1147,7 +1147,7 @@ Implementer time, in focused working days: M0 4–6, M1a 8–12, M1b 4–6, M2 4
 | D-17 | Build system | Thin xcodeproj + SwiftPM / XcodeGen / Tuist | Recommendation: Thin xcodeproj + SwiftPM |
 | D-18 | Transiently disable `AXEnhancedUserInterface` when found on | Yes (restore) / never touch | Recommendation: Yes, restore immediately; never set true |
 | D-19 | Beta distribution | Own tap + Releases / Releases only | Recommendation: Own tap + Releases |
-| D-20 | If upstream declines U1 | Keep the pinned adapter / propose another shape (e.g., a documented Node module API) | Open until upstream answers. Re-implementing upstream is excluded (NG10), and so is **bundling a copy of upstream inside the app** (S16 §4: it would ship a JIT runtime of 60 to 170 MB under Sidelauder's signature and hardened-runtime exceptions, and classify by a second copy of upstream's rules while the launchers run the installed version's helper). **Fallback, put to the operator:** if discovery fails for a real share of beta users, ask upstream for a fixed install location (for example a Homebrew formula) before considering any bundled copy |
+| D-20 | If upstream declines U1 | Keep the pinned adapter / propose another shape (e.g., a documented Node module API) | Open until upstream answers. Re-implementing upstream is excluded (NG10), and so is **bundling a copy of upstream inside the app** (S16 §4: it would ship a JIT runtime of 60 to 170 MB under Sidelauder's signature and hardened-runtime exceptions, and classify by a second copy of upstream's rules while the launchers run the installed version's helper). **Ruled 2026-09-29 (operator):** no bundling; if discovery fails for a real share of beta users, ask upstream for a fixed install location (for example a Homebrew formula) before considering any bundled copy |
 | D-21 | Build order | Both modes at once / staged | **Ruled 2026-09-29:** staged (M1a, M1b); both modes in the first public release |
 | D-22 | Slot handoff ordering (§9.4) | 1: unhide, set frame / 2: set frame while hidden, unhide | **Decided 2026-09-29 on S3's frame counts:** 2 (0/50 switches showed the target outside the slot, against 8 of 20 relocations for 1). The operator's flicker verdict on the real rail is an M1a exit criterion |
 | D-23 | Upstream calls | One call for everything / a cheap call plus `--full` | **Decided 2026-09-29 on S16:** split. The one call cost 227 ms median; the cheap call 124 ms, `--full` 281 ms at start and on a config change (§8.1.4) |
