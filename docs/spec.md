@@ -4,9 +4,9 @@
 
 | Field | Value |
 |---|---|
-| Document | Product and technical specification, v0.3 **draft** (after the M0 spikes; what M0 changed is Appendix E, the v0.1 challenge Appendix D) |
+| Document | Product and technical specification, v0.3 (after the M0 spikes; what M0 changed is Appendix E, the v0.1 challenge Appendix D) |
 | Date | 2026-09-29 |
-| Status | **Draft for the operator. M0 run: S16, S1 (synthetic and real input), S2, S3 and S14 (chat) have results (`docs/spikes/`); S15 and S14's Code-tab part move to M1a's daily use. D-03, D-11 and the bundling question under D-20 ruled by the operator; D-06 decided on S14 (§18)** |
+| Status | **Adopted by the operator 2026-09-29 as the plan for M1a. M0 run: S16, S1 (synthetic and real input), S2, S3 and S14 (chat) have results (`docs/spikes/`); S15 and S14's Code-tab part move to M1a's daily use. D-03, D-11 and the bundling question under D-20 ruled by the operator; D-06 decided on S14 (§18)** |
 | Name | **Sidelauder** (D-01, ruled 2026-09-29). It replaced the working name *Switchyard*, which NVIDIA's LLM traffic router holds in the same field (E30). It does not contain "Claude" or "Anthropic"; its resemblance to "Claude" is an accepted, recorded risk (R7) |
 | Foundation | **`claude-multiprofile` is the foundation.** Sidelauder re-implements none of its profile knowledge and reads it through one read-only interface (§7.0, §8.1) |
 | Scope | macOS companion app. Two modes in the **same first public release**: **Mode A: Floating rail** (no special permission) and **Mode B: Docked rail** (Accessibility permission). Built in stages: M1a delivers the shared core, Mode A and the slot handoff; M1b adds the rail that follows the window (§16.2) |
@@ -1075,7 +1075,7 @@ Not run in M0: S4, S6, S7, S9, S10, S12 and S15, and S14's Code part. The attach
 
 | Milestone | Content | Exit criteria |
 |---|---|---|
-| M0 Spikes and foundation | Name (D-01, done); the public repository created with §11 P1–P3 in its first commit (done); the upstream issue opened (operator's act, Appendix C); the interim adapter (done); S16, S1–S3, S14 and S15 (§16.1.1) | Every M0 spike has a result or a recorded move to M1a (S15 and S14's Code part moved there); this spec revised (v0.3); D-03, D-06 and D-11 settled |
+| M0 Spikes and foundation | Name (D-01, done); the public repository created with §11 P1–P3 in its first commit (done); the upstream issue opened (operator's act, Appendix C); the interim adapter (done); S16, S1–S3, S14 and S15 (§16.1.1) | Every M0 spike has a result or a recorded move to M1a (S15 and S14's Code part moved there); this spec revised (v0.3, adopted 2026-09-29); D-03, D-06 and D-11 settled |
 | M1a Personal alpha | S6, S7, S9, S10 (floating rail), S12 and the rest of S13 first; shared core, Mode A, slot handoff with the floating rail (F-B1, F-B3, F-B6), keep visible, sign-in assistant, onboarding, diagnostics, Phase 0 signing | §12 targets met on macOS 27; guard suite and mutation runner green; 500-switch soak clean; the operator's flicker verdict on the real rail (S3); one week of daily use with no stuck-hidden or wrong-instance events, including a hide of over 5 minutes during a long answer, a Code session hidden while it works, and a notification click from a hidden profile (S14, S15) |
 | M1b Attached rail | F-B2 (rail follows the window), F-B4 (make room); S4 and S10 for the attached rail | Rail-follow target (§12) met, or hide-during-drag in place; one more week of daily use |
 | M2 First release (beta) | Developer ID + notarization; own tap; README; SECURITY.md; §11 re-checked; macOS 26 runs of S1–S3 and S9 | Clean install on a fresh macOS 26 and 27 machine; §11 all ✅ |
@@ -1424,4 +1424,4 @@ Keys of `profiles` are upstream profile names, plus `default`.
 | 11 | Do hidden or covered instances keep working? | Stands for chat; Solo decided | S14: a chat answer finished no later hidden or covered; hiding cut CPU about sixfold, covering saved nothing (4.2.17, D-06). The Code tab asked for approval before every call, so Code went unmeasured and hidden approvals became a documented limit (4.2.23) |
 | 12 | What is left of M0? | Moved to M1a | S15, S14's Code part and hides over 5 minutes, all in M1a's daily use (§16.2); S4, S6, S7, S9, S10, S12 and the rest of S13 at M1a's start |
 
-*End of specification v0.3 (draft).*
+*End of specification v0.3.*
