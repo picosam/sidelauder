@@ -323,11 +323,12 @@ final class ActivationSpikes {
         var seen = 0
         var since = nowMs()
         var aimed: pid_t = 0
-        var from = "?"
+        // Which profile was in front when, so a trial names where it began.
+        var fronts: [(label: String, t: Double)] = []
         while seen < count {
             // Keep the square's target on the profile that is not in front.
             if let front = insts.first(where: { $0.pid == frontmostPid() }) {
-                from = front.label
+                if fronts.last?.label != front.label { fronts.append((front.label, nowMs())) }
                 if other(front).pid != aimed {
                     aimed = other(front).pid
                     sub.send("target", ["pid": NSNumber(value: aimed)])
@@ -343,6 +344,7 @@ final class ActivationSpikes {
             let label = a.info["target"] as? String ?? "?"
             guard let target = insts.first(where: { $0.label == label }) else { continue }
             let t0 = (a.info["fired"] as? NSNumber)?.doubleValue ?? (a.info["handled"] as? NSNumber)?.doubleValue ?? a.t
+            let from = fronts.last { $0.t < t0 }?.label ?? "?"
             var frontAt: Double?
             _ = await waitUntil(timeoutMs: 700) {
                 if frontAt == nil && frontWindowOwner() == target.pid { frontAt = nowMs() }
