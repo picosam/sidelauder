@@ -11,13 +11,16 @@ works with.
 
 ## Status
 
-Pre-alpha. There is no code yet and nothing to install. The repository holds
-the specification, which is the plan the code will be built against:
+Pre-alpha. There is no app yet and nothing to install. The repository holds:
 
-- [docs/spec.md](docs/spec.md), version 0.2. The spec still carries the
-  working name "Switchyard" in its text; that name was replaced by Sidelauder
-  before this repository was created, and the next revision (v0.3, after the
-  first spikes) renames it throughout.
+- [docs/spec.md](docs/spec.md), version 0.3 (draft): the plan the app will be
+  built against, revised after the first spikes.
+- [docs/spikes/](docs/spikes/): the results of those spikes (M0), with the
+  harnesses that produced them in [spikes/](spikes/).
+- The interim adapter that reads claude-multiprofile's profiles until it has a
+  machine-readable output of its own:
+  [App/Sidelauder/upstream-status.mjs](App/Sidelauder/upstream-status.mjs),
+  with its tests in [Tests/Adapter/](Tests/Adapter/).
 
 ## Principles
 
