@@ -6,7 +6,7 @@
 |---|---|
 | Document | Product and technical specification, v0.3 **draft** (after the M0 spikes; what M0 changed is Appendix E, the v0.1 challenge Appendix D) |
 | Date | 2026-09-29 |
-| Status | **Draft for the operator. M0 partly run: S16, S1, S2 and S3 have results (`docs/spikes/`); S14, S15 and the real-input S1 check wait for the operator. D-06 waits on S14; D-03, D-11 and the bundling question under D-20 ruled by the operator (§18)** |
+| Status | **Draft for the operator. M0 run: S16, S1 (synthetic and real input), S2, S3 and S14 (chat) have results (`docs/spikes/`); S15 and S14's Code-tab part move to M1a's daily use. D-03, D-11 and the bundling question under D-20 ruled by the operator; D-06 decided on S14 (§18)** |
 | Name | **Sidelauder** (D-01, ruled 2026-09-29). It replaced the working name *Switchyard*, which NVIDIA's LLM traffic router holds in the same field (E30). It does not contain "Claude" or "Anthropic"; its resemblance to "Claude" is an accepted, recorded risk (R7) |
 | Foundation | **`claude-multiprofile` is the foundation.** Sidelauder re-implements none of its profile knowledge and reads it through one read-only interface (§7.0, §8.1) |
 | Scope | macOS companion app. Two modes in the **same first public release**: **Mode A: Floating rail** (no special permission) and **Mode B: Docked rail** (Accessibility permission). Built in stages: M1a delivers the shared core, Mode A and the slot handoff; M1b adds the rail that follows the window (§16.2) |
@@ -197,13 +197,14 @@ Both modes share one core: the upstream interface, the activation ladder, hotkey
 | 4.2.13 | AX and CoreGraphics use top-left-origin global coordinates (y down, origin at the primary display's top-left). AppKit uses bottom-left (y up) | `[K]` | Single conversion function, unit-tested (§9.9) |
 | 4.2.14 | A non-sandboxed app can read a same-user process's start time and executable (`sysctl(KERN_PROC_PID)`, `proc_pidpath`) without reading its argv | `[K]` | The liveness check (§8.4). Matching argv to profiles is upstream's |
 | 4.2.15 | `NSPanel` can be shown with `orderFrontRegardless()` without activating its app. Clicks on a normal (activating) panel activate the app | `[K]` | Rail = activating panel, shown regardless (§6.1) |
-| 4.2.16 | Every app copy keeps bundle ID `com.anthropic.claudefordesktop`, so Notification Center cannot tell profiles apart; which instance a notification click activates is unknown | `[A]` A19 | Spike S15; the rail follows whatever gets activated |
-| 4.2.17 | Chromium throttles timers and rendering in hidden or fully covered windows; Claude Desktop also runs Code sessions and a VM in separate processes | `[K]` | Solo's cost is unproven: spike S14 |
+| 4.2.16 | Every app copy keeps bundle ID `com.anthropic.claudefordesktop`, so Notification Center cannot tell profiles apart; which instance a notification click activates is unknown | `[A]` A19 | S15 was not run in M0; M1a's daily use records it. The rail follows whatever gets activated |
+| 4.2.17 | Chromium throttles timers and rendering in hidden or fully covered windows, hardest after about 5 minutes hidden; Claude Desktop also runs Code sessions and a VM in separate processes. On macOS 27 a chat answer finished no later hidden or fully covered than in front (12.3 and 13.4 s against 14.1 s), and was complete when brought back. Hidden, the instance used about a sixth of its visible CPU (10 % against 64 %); fully covered it saved nothing (63 %). Hides over 5 minutes and Code sessions are unmeasured | `[K]`; `[V]` E32 (S14) | Solo costs nothing measured and saves energy; Stack does not (D-06). M1a's daily use checks long hides and Code |
 | 4.2.18 | The macOS 27 SDK's AppKit headers add no API for hosting or reparenting another app's window (its 27-tagged additions are touch-screen, status-item and presentation options) | `[V]` E26 | NG1 stands |
-| 4.2.19 | On macOS 27, an app without Accessibility brought a chosen Claude instance forward in 50 of 50 trials by every public route: after a click on its panel, from a hotkey, and even with a plain `activate` and no input behind it, including right after synthetic typing in the front app. The input was synthetic; real typing is untested | `[V]` E32 (S1) | The ladder (§9.7) works when nothing resists it; the real-input check decides R1 |
+| 4.2.19 | On macOS 27, an app without Accessibility brought a chosen Claude instance forward in 50 of 50 trials by every public route: after a click on its panel, from a hotkey, and even with a plain `activate` and no input behind it, including right after synthetic typing in the front app. With real input, typing in one profile and then pressing the hotkey or clicking the rail, 18 of 18 hotkeys and 12 of 12 clicks switched, at the same latencies | `[V]` E32 (S1) | The ladder (§9.7) stands; nothing was refused on real input either (R1) |
 | 4.2.20 | `NSRunningApplication.hide()` and `unhide()` returned false in 100 of 100 calls that worked | `[V]` E32 (S2) | Confirm by notification and `isHidden` (§9.8) |
 | 4.2.21 | Setting `kAXFrontmostAttribute` and raising the main window reports success but brought an instance forward in 1 of 50 cases where another app had just hidden and unhidden it | `[V]` E32 (S1, S2) | Step 3 stays after step 1 (§9.7) |
 | 4.2.22 | A synthetic key event's modifier flags stay in the session's modifier state until another event clears them | `[V]` E32 (S1) | Test harnesses clear them; together with 4.1.27 it stalled launchers |
+| 4.2.23 | A Code-tab session can ask for approval before every tool call, and kept asking after "Always allow" in S14. A hidden instance waiting for an approval waits until someone shows it | `[V]` E32 (S14) | A documented limit of Solo (§9.10); whether Claude notifies for an approval while hidden is checked at M1a |
 
 ### 4.3 Policy facts
 
@@ -379,7 +380,7 @@ Hotkeys use `RegisterEventHotKey` (no permission `[K]`) and are configurable in 
 
 **Launching from a hotkey.** A hotkey for a profile that is not running opens its launcher while the hotkey's Control key is still down, and a launcher opened with Control held stops at its startup screen (4.1.27). Sidelauder therefore never opens a launcher while a modifier key is held: it waits for release, up to 2 s, and otherwise shows "Release the keys to open <profile>" and opens on release (§9.6).
 
-**Known risk:** a hotkey fires while Sidelauder is *not* active, so a plain `activate` of the target may be refused (4.2.3). The ladder first brings Sidelauder itself forward on the strength of the hotkey (§9.7 step 0), then hands activation over as a rail click does. S1 measured it on synthetic input: step 0 then step 1 brought the target forward 100/100, 38 ms median to its window (4.2.19). The hotkey feature ships if the operator's real-input check agrees (R1).
+**Known risk:** a hotkey fires while Sidelauder is *not* active, so a plain `activate` of the target may be refused (4.2.3). The ladder first brings Sidelauder itself forward on the strength of the hotkey (§9.7 step 0), then hands activation over as a rail click does. S1 measured it: step 0 then step 1 brought the target forward 100/100 on synthetic input, 38 ms median to its window, and 18/18 when the operator typed in one profile and pressed the real hotkey, 42 ms median (4.2.19, R1).
 
 ### 6.6 Menu bar extra
 
@@ -766,7 +767,7 @@ Any launch waits for `didLaunchApplication` plus an upstream answer that classif
 | Step 2 (launcher) | 50/50 | 349 / 434 ms |
 | Step 3 (granted harness) | 100/100 | 25–29 / 30–32 ms |
 
-Nothing was refused, not even the call cooperative activation exists to refuse, so these runs show the ladder works when nothing resists it; the operator's real-input check (typing in one profile, then the real hotkey) decides R1. `activate(from:options:)` returned true every time, so success stays defined by the notification. Step 2 always showed the previously active profile again for about 150 ms, between the launcher quitting and the target arriving: it stays a fallback. The macOS 26 runs move to M2. v0.2's idea of opening the app copy directly ahead of step 2 is dropped: step 1 met the targets.
+Nothing was refused, not even the call cooperative activation exists to refuse, so these runs show the ladder works when nothing resists it. The operator's real-input check then typed in one profile and switched with the real hotkey (18/18, 42 / 51 ms to the window) or a real rail click (12/12, 31 / 35 ms): nothing was refused there either (R1). `activate(from:options:)` returned true every time, so success stays defined by the notification. Step 2 always showed the previously active profile again for about 150 ms, between the launcher quitting and the target arriving: it stays a fallback. The macOS 26 runs move to M2. v0.2's idea of opening the app copy directly ahead of step 2 is dropped: step 1 met the targets.
 
 ### 9.8 Hide and unhide
 
@@ -798,7 +799,8 @@ Nothing was refused, not even the call cooperative activation exists to refuse, 
 | `self-update on` profile relaunches without the flag | Upstream reports `stray`; amber; Reopen routes through the launcher |
 | Two profiles on the same account | Upstream reports it → Duplicate account → sign-in assistant |
 | Notification click from a hidden profile | The clicked instance activates (which one is S15's question); the rail follows; Mode B applies D-07 |
-| A hidden profile is mid-response or running a Code task | Keeps running if S14 passes. If S14 shows throttling, Solo gains a rule not to hide a busy instance, or Stack becomes the default (D-06) |
+| A hidden profile is mid-response or running a Code task | Keeps running: a hidden chat answer finished no later than a visible one (S14, 4.2.17). Hides over 5 minutes and Code tasks are checked at M1a; if either stalls, Solo gains a rule not to hide a busy instance (D-06) |
+| A hidden profile waits for a Code approval | It waits until shown (4.2.23). Sidelauder cannot see the prompt (I6); a documented limit of Solo. Keep visible (per profile) is the workaround for approval-heavy sessions |
 | Display unplugged or rearranged | `didChangeScreenParametersNotification` → re-clamp slot, reposition rail |
 | Sleep / wake | `didWakeNotification` → re-query upstream (PIDs may have changed) and re-validate AX observers |
 | AX call times out (instance busy) | That step fails fast (0.25 s); the switch continues with the next ladder step or the Mode A fallback |
@@ -886,7 +888,7 @@ Not in v1 (NG5). The Dock route (4.2.10) and the question of whether Claude sets
 |---|---|
 | Switch latency, running target, click → target key window | p50 ≤ 120 ms, p95 ≤ 250 ms (A); p50 ≤ 180 ms, p95 ≤ 350 ms (B). S3 also records time to the target's first fresh frame |
 | Upstream answer | ≤ 200 ms warm for the default call, never on the switch path; a cold call (~1.5 s, 4.1.20) delays status only. Measured 124 ms median, 128 ms p95 (S16). `--full` (281 ms) runs only at start and on a config change |
-| Hotkey switch latency | Same targets. Measured on synthetic input: 38 ms median, 45 ms p95 to the target's window (S1); real input pending |
+| Hotkey switch latency | Same targets. Measured 38 ms median, 45 ms p95 to the target's window on synthetic input, and 42 / 51 ms on real input (S1) |
 | Rail follow lag during drag (B) | ≤ 1 frame at 60 Hz where Electron streams moves; otherwise hide during the drag (§9.5) |
 | Idle CPU | ≤ 0.1 % averaged over 10 min, 3 profiles running, no interaction |
 | Memory | ≤ 60 MB RSS |
@@ -1059,22 +1061,22 @@ The operator's M0 prompt scoped this run to S16, then S1 to S3, S14 and S15. Rep
 | Spike | Verdict | Numbers | Consequence |
 |---|---|---|---|
 | S16 | **Pass** | Agrees with `list`, `doctor` and the live process table on every state shown; the rest through upstream's functions on fixtures. 124 ms per call (`--full` 281 ms). Discovery 20/20 from Dock-style launches, 95 ms | §8.1 rewritten around the adapter as built; §6.7 gains the interactive probe and the kill; bundling rejected (D-20) |
-| S1 | **Pass on synthetic input**; real input pending | Every rung 50/50 from an app without Accessibility; click to front 39 / 55 ms, hotkey 38 / 45 ms (p50 / p95); step 2 349 / 434 ms | §9.7 stands; D-03 ruled: forbid; launchers never opened with a modifier held (§9.6) |
+| S1 | **Pass**, on synthetic and real input | Every rung 50/50 from an app without Accessibility; click to front 39 / 55 ms, hotkey 38 / 45 ms (p50 / p95); step 2 349 / 434 ms. Real input: hotkeys 18/18 (42 / 51 ms), rail clicks 12/12 (31 / 35 ms) | §9.7 stands; D-03 ruled: forbid; launchers never opened with a modifier held (§9.6) |
 | S2 | **Pass** | 50/50; hide 3 / 7 ms, unhide 2 / 6 ms; both calls return false while working | Solo is sound from Mode A; confirm by notification (§9.8) |
 | S3 | **Accuracy pass**; flicker verdict at M1a | 100/100 within 1 pt; minimum window 600 × 400 pt; ordering 2 never showed the target outside the slot (0/50), ordering 1 did in 8 of 20 relocations; 2–4 in-between frames on a resize in both | Ordering 2 adopted (D-22); M1a exit gains the operator's flicker verdict |
 | S13 | Partial | All defaults register; no enabled macOS shortcut collides | D-11 ruled; Claude's own shortcuts checked at M1a's start |
 | S11 | Observed | Grant held across about a dozen rebuilds with a development certificate; an ad-hoc build's entry did not carry over | Phase 0 signs stably from the first build (§14.2) |
-| S14 | **Pending** (operator) | — | D-06 waits on it |
-| S15 | **Pending** (operator) | — | — |
+| S14 | **Pass for chat**; Code not measured | Chat answer: work ended at 14.1 s visible, 12.3 s hidden, 13.4 s fully covered, complete at the reveal (1.1 × T) in both; CPU 64 % visible, 10 % hidden, 63 % covered. Code: the session asked for approval before every call, so no unattended run was possible | D-06 decided: Solo. M1a's daily use checks hides over 5 minutes and Code; hidden approvals are a documented limit (4.2.23) |
+| S15 | **Not run** | Harness ready and smoke-tested | Moved to M1a's daily use by the operator; nothing waits on it (the rail follows the activation) |
 
-Not run in M0: S4, S6, S7, S9, S10 and S12. The attached-rail parts of S4 and S10 were already M1b's; the rest move to the start of M1a. The sign-in trial (§9.11) needs every other Claude instance quit, including the one the implementer's session runs in, so it is the operator's, at M1a.
+Not run in M0: S4, S6, S7, S9, S10, S12 and S15, and S14's Code part. The attached-rail parts of S4 and S10 were already M1b's; the rest move to the start of M1a. The sign-in trial (§9.11) needs every other Claude instance quit, including the one the implementer's session runs in, so it is the operator's, at M1a.
 
 ### 16.2 Milestones
 
 | Milestone | Content | Exit criteria |
 |---|---|---|
-| M0 Spikes and foundation | Name (D-01, done); the public repository created with §11 P1–P3 in its first commit (done); the upstream issue opened (operator's act, Appendix C); the interim adapter (done); S16, S1–S3, S14 and S15 (§16.1.1) | Every M0 spike has a result (S14, S15 and S1's real-input check outstanding); this spec revised (v0.3, draft); D-03 and D-11 ruled, D-06 once S14 has run |
-| M1a Personal alpha | S6, S7, S9, S10 (floating rail), S12 and the rest of S13 first; shared core, Mode A, slot handoff with the floating rail (F-B1, F-B3, F-B6), keep visible, sign-in assistant, onboarding, diagnostics, Phase 0 signing | §12 targets met on macOS 27; guard suite and mutation runner green; 500-switch soak clean; the operator's flicker verdict on the real rail (S3); one week of daily use with no stuck-hidden or wrong-instance events |
+| M0 Spikes and foundation | Name (D-01, done); the public repository created with §11 P1–P3 in its first commit (done); the upstream issue opened (operator's act, Appendix C); the interim adapter (done); S16, S1–S3, S14 and S15 (§16.1.1) | Every M0 spike has a result or a recorded move to M1a (S15 and S14's Code part moved there); this spec revised (v0.3); D-03, D-06 and D-11 settled |
+| M1a Personal alpha | S6, S7, S9, S10 (floating rail), S12 and the rest of S13 first; shared core, Mode A, slot handoff with the floating rail (F-B1, F-B3, F-B6), keep visible, sign-in assistant, onboarding, diagnostics, Phase 0 signing | §12 targets met on macOS 27; guard suite and mutation runner green; 500-switch soak clean; the operator's flicker verdict on the real rail (S3); one week of daily use with no stuck-hidden or wrong-instance events, including a hide of over 5 minutes during a long answer, a Code session hidden while it works, and a notification click from a hidden profile (S14, S15) |
 | M1b Attached rail | F-B2 (rail follows the window), F-B4 (make room); S4 and S10 for the attached rail | Rail-follow target (§12) met, or hide-during-drag in place; one more week of daily use |
 | M2 First release (beta) | Developer ID + notarization; own tap; README; SECURITY.md; §11 re-checked; macOS 26 runs of S1–S3 and S9 | Clean install on a fresh macOS 26 and 27 machine; §11 all ✅ |
 | M3 1.0 | Fixes from the beta; U1 merged, or D-20 decided | No open P1 bugs; compatibility matrix run |
@@ -1083,7 +1085,7 @@ Not run in M0: S4, S6, S7, S9, S10 and S12. The attached-rail parts of S4 and S1
 
 Implementer time, in focused working days: M0 4–6, M1a 8–12, M1b 4–6, M2 4–6, M3 depends on feedback. Operator time: about 3 hours in M0 (Accessibility grants, the S3 flicker review, notification and sign-in trials), about an hour per later milestone, plus a week of daily use at M1a and at M1b. External waits: upstream's answer on U1 (one maintainer, no estimate) and Apple Developer Program enrolment before M2 (annual fee). Most uncertainty sits in S1, S3, S9 and S14. Re-estimate after M0.
 
-**M0 so far (2026-09-29).** One implementer session built the adapter and its gates, the harnesses, and ran S16, S1, S2 and S3; operator time was about 45 minutes (two Accessibility grants, one reset, a screen recording, launcher dialogs). S14, S15 and S1's real-input check need about 45 minutes more of the operator. S1 and S3, the two largest uncertainties, came out better than feared; S14 is now the one that can still change the design (D-06).
+**M0 (2026-09-29).** One implementer session built the adapter and its gates, the harnesses, and ran S16, S1, S2 and S3; a second ran the operator's trials. Operator time was about 45 minutes in the first session (two Accessibility grants, one reset, a screen recording, launcher dialogs) and about an hour in the second (S1's real input, S14's runs and retries). Hand-timed trials cost more than planned: three chat runs and three Code runs had to be discarded or stopped, and S15 moved to the built app. For M1a: prefer checks the operator makes once in daily use over timed trials, and time from the machine's own signals, not hand marks.
 
 ### 16.4 Backlog (explicitly not v1)
 
@@ -1102,7 +1104,7 @@ Implementer time, in focused working days: M0 4–6, M1a 8–12, M1b 4–6, M2 4
 
 | ID | Risk | Likelihood | Impact | Mitigation | Early signal |
 |---|---|---|---|---|---|
-| R1 | Activation from hotkeys is refused under cooperative activation | Low to medium (S1: 100/100 on synthetic input; real input untested) | High (US3) | Ladder §9.7; S1; two-step fallback; D-03 | The real-input check below 9/10 |
+| R1 | Activation from hotkeys is refused under cooperative activation | Low (S1: 100/100 on synthetic input, 18/18 hotkeys and 12/12 clicks on real input, macOS 27) | High (US3) | Ladder §9.7; S1; two-step fallback; D-03 | A refused switch in daily use, or on macOS 26 at M2 |
 | R2 | Anthropic ships native multi-account in Claude Desktop | Medium | High (obsoletes the product) | Keep v1 lean; open-source; sunset gracefully | Changes in the linked feature requests (E1) |
 | R3 | Upstream declines U1, or changes the internals the interim adapter imports | Medium | High (the foundation) | Issue first; adapter pinned per tested version; version gate; the "upstream unavailable" state; D-20 | Upstream's answer; its CHANGELOG |
 | R4 | Claude Desktop changes its window structure (custom windows, several main windows) | Medium | Medium | Isolated AX adapter; the S3 check re-run per Claude release | Integration test failures on a new Claude |
@@ -1117,8 +1119,8 @@ Implementer time, in focused working days: M0 4–6, M1a 8–12, M1b 4–6, M2 4
 | R13 | Users expect lower memory use (N Electron instances) | Medium | Low | Document it: Sidelauder does not change Claude's footprint | Issues |
 | R14 | Frame fighting with other window managers | Medium | Low | Feedback-loop guard; per-profile keep visible; docs | Issues |
 | R15 | Name collision: NVIDIA's "Switchyard" LLM router (E30) | **Closed 2026-09-29**: renamed Sidelauder before the repository existed (D-01) | — | — | — |
-| R16 | Notification clicks activate the wrong instance | Unknown | Medium | S15; the rail follows; Stack option | S15 |
-| R17 | Hidden instances are throttled, so Solo stalls long responses | Unknown | High (defeats Solo) | S14; busy rule or Stack default | S14 |
+| R16 | Notification clicks activate the wrong instance | Unknown (S15 not run in M0) | Medium | The rail follows; Stack option; checked in M1a's daily use | A notification click in daily use that brings forward another profile |
+| R17 | Hidden instances are throttled, so Solo stalls long responses | Low for chat answers (S14: no slower hidden or covered); unknown for hides over 5 minutes and Code sessions | High (defeats Solo) | Busy rule if M1a's checks show a stall; keep visible per profile; hidden approvals documented (4.2.23) | A hidden answer or Code task found unfinished in daily use |
 | R18 | A Dock-launched app cannot find `claude-multiprofile` or `node` | Low to medium (S16: 20/20 on the test Mac; fixtures show setups that need the interactive probe or a manual path) | Medium | Two probes (§6.7) with user confirmation; manual path | Beta reports of "upstream not found" |
 | R19 | A hotkey launch stalls the launcher at its startup screen (4.1.27) | Certain without the rule | Medium (the profile does not open; a dialog appears) | Never open a launcher with a modifier held (§9.6); GD-7 partition | GD-7's "held" test |
 
@@ -1130,10 +1132,10 @@ Implementer time, in focused working days: M0 4–6, M1a 8–12, M1b 4–6, M2 4
 |---|---|---|---|
 | D-01 | Product name and whether to contact Anthropic pre-launch | Non-"Claude" name + referential tagline / ask Anthropic / both | **Name ruled 2026-09-29: Sidelauder** (the working name "Switchyard" is taken in the field, E30; the resemblance to "Claude" is an accepted risk under R7). Whether to ask Anthropic before M2 stays open (P7) |
 | D-02 | Home | Separate repo / inside upstream / fork | **Ruled 2026-09-29:** separate repository, public from its first commit, on upstream's interface (§15) |
-| D-03 | Private-API activation fallback | Forbid / opt-in setting | **Ruled 2026-09-29 (operator), on S1:** forbid in v1. Every public route worked 50/50 on synthetic input; reopens only if the operator's real-input check fails |
+| D-03 | Private-API activation fallback | Forbid / opt-in setting | **Ruled 2026-09-29 (operator), on S1:** forbid in v1. Every public route worked 50/50 on synthetic input, and the operator's real-input check passed (18/18 hotkeys, 12/12 clicks) |
 | D-04 | Minimum macOS | 14 / 15 / 26 | **Ruled 2026-09-29:** 26 |
 | D-05 | First-run mode | Auto / A / B | Recommendation: Auto |
-| D-06 | Default policy | Solo / Stack | **Open, put to the operator:** waits on S14 (pending). S2 shows Solo's hiding works from Mode A (50/50). Recommendation unchanged: Solo in both modes, unless S14 shows hidden instances stall |
+| D-06 | Default policy | Solo / Stack | **Decided 2026-09-29 on S14 (implementer; the operator may overrule): Solo** in both modes. A hidden or fully covered chat answer finished no later than a visible one, and hiding cut the instance's CPU about sixfold, while covering saved nothing. Revisited if M1a's daily use finds a hidden answer or Code task stalled (then Solo gains a busy rule); a hidden Code approval is a documented limit (4.2.23) |
 | D-07 | Snap external activations into the slot (B) | On / Off | Recommendation: On, with per-profile keep visible |
 | D-08 | Read `lastKnownAccountUuid` | On / Off | **Superseded 2026-09-29** by the foundation rule: Sidelauder reads no account data; upstream reports shared accounts (§8.5) |
 | D-09 | Default avatar | Initials / app icon | Recommendation: Initials (trademark-safe) |
@@ -1191,7 +1193,7 @@ Implementer time, in focused working days: M0 4–6, M1a 8–12, M1b 4–6, M2 4
 | E29 | [anthropics/claude-code#18435](https://github.com/anthropics/claude-code/issues/18435) (feature request: several accounts in Claude Desktop), with search synthesis | S | R2: no native multi-account switching yet |
 | E30 | [NVIDIA-NeMo/Switchyard](https://github.com/NVIDIA-NeMo/Switchyard), 3.2k stars, active 2026-09-29: "lets LLM applications route traffic across models and providers" | V | D-01, R15 |
 | E31 | `claude-multiprofile` 0.1.31 as installed, read again for M0: `commands/doctor.js` (`checkOwnVersion` runs `npm view`; `checkDesktopLaunchPath`'s inline stray test), `appclone.js` (`parseRunningCopies` matches by substring), `launchhelper.js` (`running`, `onProfile`, `refresh` and its `.refreshing` copy), `state.js` (`toolVersion`) | V | 4.1.22, 4.1.24, 4.1.26, §8.1.3 |
-| E32 | M0 spike reports, `docs/spikes/` (S1, S2, S3, S16, and the S11 and S13 observations in the index), measured 2026-09-29 on macOS 27.0, Apple silicon, with the harnesses in `spikes/` | V | 4.1.10, 4.1.20, 4.1.27, 4.2.4, 4.2.11, 4.2.19–4.2.22, §6.7, §8.1, §9.4, §9.6–§9.9, §16.1.1 |
+| E32 | M0 spike reports, `docs/spikes/` (S1 with its real-input check, S2, S3, S14, S16, S15's move, and the S11 and S13 observations in the index), measured 2026-09-29 on macOS 27.0, Apple silicon, with the harnesses in `spikes/` | V | 4.1.10, 4.1.20, 4.1.27, 4.2.4, 4.2.11, 4.2.17, 4.2.19–4.2.23, §6.7, §8.1, §9.4, §9.6–§9.10, §16.1.1 |
 
 ### 19.2 Assumptions
 
@@ -1213,9 +1215,9 @@ Implementer time, in focused working days: M0 4–6, M1a 8–12, M1b 4–6, M2 4
 | A14 | A stable non-ad-hoc signing identity keeps the TCC grant across rebuilds | S11, observed: **holds** with a development certificate, when used from the first build |
 | A15 | Stage Manager state is readable from `com.apple.WindowManager` → `GloballyEnabled` | S9 |
 | A16 | Claude reopens a window when activated with none open | S6 |
-| A17 | A hotkey lets Sidelauder activate itself under cooperative activation | S1: **holds on synthetic input** (100/100, p95 15 ms); real input pending |
-| A18 | Hidden or fully covered instances keep working at full speed | S14: pending (operator) |
-| A19 | A notification click activates the instance that posted it | S15: pending (operator) |
+| A17 | A hotkey lets Sidelauder activate itself under cooperative activation | S1: **holds** (100/100 synthetic, p95 15 ms; 18/18 real) |
+| A18 | Hidden or fully covered instances keep working at full speed | S14: **holds for a chat answer** (no slower hidden or covered); hides over 5 minutes and Code sessions at M1a |
+| A19 | A notification click activates the instance that posted it | S15: not run; M1a's daily use |
 | A20 | A Dock-launched app can find `claude-multiprofile` and `node` through the user's login shell | S16: **holds** on the test Mac (20/20); fixtures show the setups that need the interactive probe or a manual path |
 
 ---
@@ -1413,12 +1415,13 @@ Keys of `profiles` are upstream profile names, plus `default`.
 | 2 | What does an upstream call cost? | Changes | One call cost 227 ms; the split (D-23) gives 124 ms on process events and 281 ms with `--full` at start and on a config change |
 | 3 | Can a Dock-launched app find upstream? | Stands, with a second probe | 20/20 on the test Mac. A terminal launch inherits the shell's environment (4.1.10), so the test had to imitate the Dock; an interactive zsh ignores SIGTERM, so a probe is killed as a group (§6.7) |
 | 4 | Would bundling upstream be better than calling the installed one? | No | S16 §4: a JIT runtime under Sidelauder's signature, a second copy of upstream's rules, two security-update streams. The fallback beside D-20 is a fixed install location from upstream |
-| 5 | Does the activation ladder work? | Stands, on synthetic input | S1: every rung 50/50 without Accessibility, click to front 39 ms. Nothing was refused, so the real-input check still decides R1. Step 2 shows the previous window again; step 3 fails after a hide and unhide (4.2.21) |
+| 5 | Does the activation ladder work? | Stands | S1: every rung 50/50 without Accessibility, click to front 39 ms; on real input 18/18 hotkeys and 12/12 clicks. Nothing was refused (R1). Step 2 shows the previous window again; step 3 fails after a hide and unhide (4.2.21) |
 | 6 | Can a hotkey launch a profile? | Changes | A launcher opened with Control held stops at its startup screen (4.1.27); launches wait for the modifiers' release (§9.6, R19, GD-7) |
 | 7 | Do hide and unhide work from Mode A? | Stands | S2: 50/50, under 7 ms; the calls' return values are not evidence (4.2.20) |
 | 8 | Does the slot handoff land, and which ordering? | Stands; ordering 2 | S3: 100/100 within 1 pt; ordering 2 never showed the target outside the slot (D-22); minimum window 600 × 400 pt. Flicker is the operator's verdict at M1a |
 | 9 | Were v0.2's upstream facts right? | One correction | `doctor` makes a network call (4.1.22); `runningCopies` matches by substring (4.1.26); no exported classification or refresh state (4.1.24) |
 | 10 | Does the Accessibility grant survive rebuilds? | Observed | With a development certificate from the first build, yes; an ad-hoc build's entry does not carry over (4.2.11, §14.2) |
-| 11 | What is left of M0? | Operator's trials | S14 (decides D-06), S15, and S1's real-input check. S4, S6, S7, S9, S10, S12 and the rest of S13 move to M1a's start |
+| 11 | Do hidden or covered instances keep working? | Stands for chat; Solo decided | S14: a chat answer finished no later hidden or covered; hiding cut CPU about sixfold, covering saved nothing (4.2.17, D-06). The Code tab asked for approval before every call, so Code went unmeasured and hidden approvals became a documented limit (4.2.23) |
+| 12 | What is left of M0? | Moved to M1a | S15, S14's Code part and hides over 5 minutes, all in M1a's daily use (§16.2); S4, S6, S7, S9, S10, S12 and the rest of S13 at M1a's start |
 
 *End of specification v0.3 (draft).*
