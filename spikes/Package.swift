@@ -11,5 +11,8 @@ let package = Package(
         .executableTarget(name: "Discovery"),
         // S1, S2, S3, S14, S15: activation, hide/unhide, AX frames, hidden work, notifications.
         .executableTarget(name: "SpikeRunner"),
-    ]
+    ],
+    // Throwaway spike code talking to Carbon and AX callbacks: Swift 5 mode
+    // keeps it short. The app itself is Swift 6, strict concurrency (§7.4).
+    swiftLanguageModes: [.v5]
 )
