@@ -123,12 +123,14 @@ final class HiddenSpikes {
         var samples: [Double] = []
         last = treeCpuMs(a.pid); lastT = nowMs()
         var finished: (id: UInt32, t: Double)?
+        var lastBusyInRun = t0
         while finished == nil && nowMs() - t0 < maxSeconds * 1000 {
             finished = await nextMark(after: t0, among: [2, 9], timeoutMs: 250)
             let c = treeCpuMs(a.pid), t = nowMs()
             let pct = (c - last) / (t - lastT) * 100
             samples.append(pct)
             log.write(["spike": "S14", "sample": (t - t0).rounded() / 1000, "cpuPct": round1(pct), "hidden": appA.isHidden])
+            if pct >= 8 { lastBusyInRun = t }
             last = c; lastT = t
             if revealed == nil, let r = revealAfter, condition != "visible", t - t0 >= r * 1000 {
                 if let (w, f) = coverRestore { _ = axSetFrame(w, f) }
@@ -143,9 +145,27 @@ final class HiddenSpikes {
                            "aFront": frontmostPid() == a.pid, "aHidden": appA.isHidden])
             }
         }
+        // Hand marks are late or early by seconds; the objective end is A's
+        // CPU. Keep sampling after the finish mark until A has been quiet
+        // (under quietPct) for quietS, and report the last busy sample.
+        let quietPct = 8.0, quietS = 8.0
+        var lastBusy = lastBusyInRun
+        if finished?.id == 2 {
+            let tailStart = nowMs()
+            while nowMs() - lastBusy < quietS * 1000 && nowMs() - tailStart < 180_000 {
+                await sleepMs(250)
+                let c = treeCpuMs(a.pid), t = nowMs()
+                let pct = (c - last) / (t - lastT) * 100
+                log.write(["spike": "S14", "sample": (t - t0).rounded() / 1000, "cpuPct": round1(pct),
+                           "hidden": appA.isHidden, "tail": true])
+                if pct >= quietPct { lastBusy = t }
+                last = c; lastT = t
+            }
+        }
         let streaming = marks.first { $0.t > t0 && $0.id == 3 }
         log.write(["spike": "S14", "event": "end", "condition": condition, "kind": kind,
                    "finishedS": round1(finished.map { ($0.t - t0) / 1000 }), "stoppedEarly": finished?.id == 9,
+                   "cpuEndS": round1((lastBusy - t0) / 1000), "quietPct": quietPct,
                    "revealedS": round1(revealed.map { ($0 - t0) / 1000 }),
                    "stillStreamingAtReveal": streaming != nil,
                    "cpuPctMedian": round1(percentile(samples, 0.5)), "cpuPctP95": round1(percentile(samples, 0.95))])

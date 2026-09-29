@@ -90,12 +90,12 @@ def s3(rows):
 def s14(rows):
     ends = [r for r in rows if r.get("spike") == "S14" and r.get("event") == "end"]
     starts = [r for r in rows if r.get("spike") == "S14" and r.get("event") == "start"]
-    print("| Kind | Condition | Applied | Revealed at s | Still streaming at reveal | Finished at s | CPU median / p95 % |")
-    print("|---|---|---|---|---|---|---|")
+    print("| Kind | Condition | Applied | Revealed at s | Still streaming at reveal | Finish mark at s | CPU quiet from s | CPU median / p95 % |")
+    print("|---|---|---|---|---|---|---|---|")
     for e, st in zip(ends, starts):
         applied = ", ".join(f"{k}={v}" for k, v in st.get("applied", {}).items() if k != "setFrame") or "–"
         print(f"| {e['kind']} | {e['condition']} | {applied} | {e.get('revealedS') or '–'} | "
-              f"{'yes' if e.get('stillStreamingAtReveal') else 'no'} | {e.get('finishedS')} | "
+              f"{'yes' if e.get('stillStreamingAtReveal') else 'no'} | {e.get('finishedS')} | {e.get('cpuEndS', '–')} | "
               f"{e.get('cpuPctMedian')} / {e.get('cpuPctP95')} |")
 
 
