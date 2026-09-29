@@ -133,14 +133,17 @@ func frontWindowOwner() -> pid_t? {
 }
 
 /// The number of the topmost on-screen window at a global (top-left) point,
-/// skipping the Dock's full-screen overlay, which clicks pass through.
+/// skipping the full-screen overlays that clicks pass through.
 func topWindowNumber(at p: CGPoint) -> Int? {
     guard let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID)
         as? [[String: Any]] else { return nil }
     for w in list {
         guard let b = w[kCGWindowBounds as String] as? [String: Double],
               let alpha = w[kCGWindowAlpha as String] as? Double, alpha > 0 else { continue }
-        if (w[kCGWindowOwnerName as String] as? String) == "Dock" { continue }
+        // Click-through overlays that cover the whole screen: the Dock's, and
+        // the Screenshot tool's while a screen recording runs.
+        // The window server's own windows (the cursor image) take no clicks either.
+        if ["Dock", "Screenshot", "screencaptureui", "Window Server"].contains(w[kCGWindowOwnerName as String] as? String ?? "") { continue }
         let r = CGRect(x: b["X"] ?? 0, y: b["Y"] ?? 0, width: b["Width"] ?? 0, height: b["Height"] ?? 0)
         if r.contains(p) { return w[kCGWindowNumber as String] as? Int }
     }

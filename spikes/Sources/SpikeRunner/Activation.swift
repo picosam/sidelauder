@@ -103,10 +103,20 @@ final class ActivationSpikes {
 
     /// Brings an instance forward for a trial's precondition, by the most
     /// reliable route available; not itself measured.
+    var lastSetup: [String: Any] = [:]
     func makeFront(_ i: Instance) async -> Bool {
-        if frontmostPid() == i.pid && !NSApp.isActive { return true }
-        if axTrusted() { _ = step3(i.pid) }
-        return await waitUntil(timeoutMs: 2000) { frontmostPid() == i.pid && !NSApp.isActive } != nil
+        if frontmostPid() == i.pid && !NSApp.isActive { lastSetup = ["route": "already"]; return true }
+        var errs: [String] = []
+        if axTrusted() { errs = step3(i.pid) }
+        var ok = await waitUntil(timeoutMs: 1000) { frontmostPid() == i.pid && !NSApp.isActive } != nil
+        lastSetup = ["route": "ax", "axErrors": errs, "ok": ok]
+        if !ok, let sub = subject {
+            // AX did not bring it forward; ask the subject (step 1, measured reliable in S1).
+            sub.send("step1", ["pid": NSNumber(value: i.pid)])
+            ok = await waitUntil(timeoutMs: 1000) { frontmostPid() == i.pid && !NSApp.isActive } != nil
+            lastSetup["fallback"] = ok ? "subject-step1-ok" : "subject-step1-failed"
+        }
+        return ok
     }
 
     // MARK: S1
@@ -148,7 +158,9 @@ final class ActivationSpikes {
                 sub.send("target", ["pid": NSNumber(value: target.pid)])
                 _ = await sub.ack("target", after: t0, timeoutMs: 300)
                 guard topWindowNumber(at: sub.panelPoint) == sub.panelWindow else {
-                    rec["error"] = "subject panel not topmost; click not posted"; log.write(rec); return
+                    rec["error"] = "subject panel not topmost; click not posted"
+                    rec["windowsAtPoint"] = windowsAt(sub.panelPoint).map { "\($0["owner"] ?? "?")/\($0["layer"] ?? "?")" }
+                    log.write(rec); return
                 }
                 Poster.clickAt(sub.panelPoint)
                 let a = await sub.ack("click", after: t0, timeoutMs: 400)
@@ -359,8 +371,12 @@ final class ActivationSpikes {
             _ = await makeFront(front)
             if app.isHidden { app.unhide(); _ = await waitUntil(timeoutMs: 1000) { !app.isHidden } }
             await sleepMs(200)
+            let preFront = frontmostPid() == front.pid, preInactive = !NSApp.isActive, preShown = !app.isHidden
             var rec: [String: Any] = ["spike": "S2", "trial": n, "target": back.label,
-                                      "preconditionOk": frontmostPid() == front.pid && !NSApp.isActive && !app.isHidden]
+                                      "preconditionOk": preFront && preInactive && preShown,
+                                      "pre": ["front": preFront, "inactive": preInactive, "shown": preShown,
+                                              "frontIs": insts.first { $0.pid == frontmostPid() }?.label ?? (frontmostPid() == subject?.pid ? "subject" : "other")],
+                                      "setup": lastSetup]
             var t0 = nowMs()
             if let sub = subject {
                 sub.send("hide", ["pid": NSNumber(value: back.pid)])
@@ -369,7 +385,7 @@ final class ActivationSpikes {
                 rec["hideReturned"] = app.hide()
             }
             let hid = await waitUntil(timeoutMs: 1000) { self.watch.first("hide", pid: back.pid, after: t0) != nil && app.isHidden }
-            rec["hideMs"] = round1(hid)
+            rec["hideMs"] = round1(hid == nil ? nil : watch.first("hide", pid: back.pid, after: t0).map { $0.t - t0 })
             rec["frontAfterHide"] = frontmostPid() == front.pid ? "unchanged" : "changed"
             await sleepMs(200)
             t0 = nowMs()
@@ -380,7 +396,7 @@ final class ActivationSpikes {
                 rec["unhideReturned"] = app.unhide()
             }
             let shown = await waitUntil(timeoutMs: 1000) { self.watch.first("unhide", pid: back.pid, after: t0) != nil && !app.isHidden }
-            rec["unhideMs"] = round1(shown)
+            rec["unhideMs"] = round1(shown == nil ? nil : watch.first("unhide", pid: back.pid, after: t0).map { $0.t - t0 })
             rec["frontAfterUnhide"] = frontmostPid() == front.pid ? "unchanged" : "changed"
             rec["ok"] = hid != nil && shown != nil
             log.write(rec)

@@ -43,6 +43,8 @@ final class FrameSpikes {
         return found
     }
 
+    var perturb = false
+
     func s3(variant: Int, switches: Int) async {
         guard axTrusted() else { log.write(["spike": "S3", "error": "no Accessibility grant"]); return }
         let a = insts[0], b = insts[1]
@@ -62,7 +64,7 @@ final class FrameSpikes {
         panel.orderFrontRegardless()
 
         let origin = nowMs()
-        log.write(["spike": "S3", "event": "start", "variant": variant, "switches": switches, "slot": slot.dict,
+        log.write(["spike": "S3", "event": "start", "variant": variant, "switches": switches, "slot": slot.dict, "perturb": perturb,
                    "enhancedUI": enhanced.map { $0.map { $0 as Any } ?? NSNull() }, "syncAt": 0])
         await flash(.systemPink)
 
@@ -72,11 +74,29 @@ final class FrameSpikes {
             var steps: [String: Any] = [:]
             func mark(_ name: String) { steps[name] = round1(nowMs() - origin) }
 
+            // --perturb: move the hidden target somewhere else first, so the
+            // handoff has to relocate it, as it will whenever two profiles'
+            // windows were left in different places.
+            if perturb, let pw = axMainWindow(dst.pid) {
+                let dx = CGFloat([-240, -120, 160, 280][k % 4]), dy = CGFloat([90, -60, 140, -110][k % 4])
+                let dw = CGFloat([-300, -150, 0, -220][k % 4]), dh = CGFloat([-200, -80, -150, 0][k % 4])
+                let f = CGRect(x: slot.minX + dx + 300, y: max(40, slot.minY + dy), width: max(640, slot.width + dw), height: max(420, slot.height + dh))
+                _ = axSetFrame(pw, f)
+                steps["perturbedTo"] = f.dict
+            }
+
             // The rail click: SpikeRunner becomes active, as it would on a click.
             var clicked = false
             panel.view.onMouseDown = { _ in clicked = true }
             mark("click")
-            guard Poster.click(panel) else { log.write(["spike": "S3", "switch": k, "error": "panel not topmost"]); break }
+            panel.orderFrontRegardless()
+            _ = await waitUntil(timeoutMs: 500) { topWindowNumber(at: self.panel.clickPoint) == self.panel.windowNumber }
+            guard Poster.click(panel) else {
+                log.write(["spike": "S3", "switch": k, "error": "panel not topmost",
+                           "panelWindow": panel.windowNumber, "panelVisible": panel.isVisible,
+                           "windowsAtPoint": windowsAt(panel.clickPoint).map { "\($0["owner"] ?? "?")/\($0["layer"] ?? "?")/\($0["w"] ?? 0)x\($0["h"] ?? 0)" }])
+                break
+            }
             _ = await waitUntil(timeoutMs: 300) { clicked && NSApp.isActive }
 
             var errors: [String] = []

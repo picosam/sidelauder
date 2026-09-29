@@ -64,12 +64,13 @@ def s2(rows):
 
 
 def s3(rows):
-    rs = [r for r in rows if r.get("spike") == "S3" and "switch" in r]
+    rs = [r for r in rows if r.get("spike") == "S3" and "switch" in r and "variant" in r]
     if not rs:
         return
     by = OrderedDict()
     for r in rs:
-        by.setdefault(r["variant"], []).append(r)
+        key = f'{r["variant"]}{" perturbed" if r.get("steps", {}).get("perturbedTo") else ""}'
+        by.setdefault(key, []).append(r)
     print("| Variant | Switches | Frame within 1 pt | Activated | Source hidden | Window found while hidden | Switch p50 / p95 ms |")
     print("|---|---|---|---|---|---|---|")
     for v, xs in by.items():

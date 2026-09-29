@@ -17,7 +17,7 @@
 //        Mode A will; SpikeRunner only sets up, posts the input and measures
 //   s1-real --a P --b P --count N               the operator's real hotkeys and clicks
 //   s2 --a P --b P --trials N [--subject]
-//   s3 --a P --b P --variant 1|2 --switches N
+//   s3 --a P --b P --variant 1|2 --switches N [--perturb]
 //   s14 --a P [--b P] --condition visible|hidden|covered --kind chat|code
 //       [--reveal-after S] [--max S]
 //   s15 --a P --b P [--c P] --clicks N
@@ -82,6 +82,7 @@ final class Runner: NSObject, NSApplicationDelegate {
             await act.s2(trials: args.int("--trials", 50), useSubject: args.has("--subject"), out: out)
         case "s3":
             let frames = FrameSpikes(log: log, watch: watch, panel: panel, act: act, insts: insts)
+            frames.perturb = args.has("--perturb")
             await frames.s3(variant: args.int("--variant", 1), switches: args.int("--switches", 30))
         case "s14":
             let hidden = HiddenSpikes(log: log, watch: watch, act: act, insts: insts)
