@@ -76,6 +76,14 @@ id = "adapter-mutations"
 command = ["node", "Tests/Adapter/mutate.mjs"]
 blocking = true
 
+# The M0 spike harnesses (spikes/) are throwaway, but the reports cite
+# them, so the code a reviewer reads must at least build. Needs Swift 6
+# (Xcode) on macOS; about 10 s clean.
+[[gates]]
+id = "spikes-build"
+command = ["swift", "build", "--package-path", "spikes", "-c", "release"]
+blocking = true
+
 # Temporary, for round 1 only (onboarding §2): proves the subprocess
 # environment the gates run in. Read its attestation in the first request,
 # then delete this gate.
