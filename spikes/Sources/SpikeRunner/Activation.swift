@@ -322,10 +322,16 @@ final class ActivationSpikes {
         log.write(["spike": "S1", "event": "real-start", "count": count])
         var seen = 0
         var since = nowMs()
+        var aimed: pid_t = 0
+        var from = "?"
         while seen < count {
             // Keep the square's target on the profile that is not in front.
             if let front = insts.first(where: { $0.pid == frontmostPid() }) {
-                sub.send("target", ["pid": NSNumber(value: other(front).pid)])
+                from = front.label
+                if other(front).pid != aimed {
+                    aimed = other(front).pid
+                    sub.send("target", ["pid": NSNumber(value: aimed)])
+                }
             }
             guard let a = sub.acks.first(where: { ($0.kind == "hotkey" || $0.kind == "click") && $0.t > since }) else {
                 await sleepMs(20)
@@ -343,7 +349,7 @@ final class ActivationSpikes {
                 return frontAt != nil && self.watch.first("activate", pid: target.pid, after: t0) != nil
             }
             let actMs = watch.first("activate", pid: target.pid, after: t0).map { $0.t - t0 }
-            log.write(["spike": "S1", "condition": "real-\(a.kind)", "actor": "subject", "trial": seen, "target": label,
+            log.write(["spike": "S1", "condition": "real-\(a.kind)", "actor": "subject", "trial": seen, "target": label, "from": from,
                        "preconditionOk": true, "allowed": a.info["allowed"] ?? NSNull(),
                        "step0Ok": a.info["step0Ok"] ?? NSNull(),
                        "activateMs": round1(actMs), "frontMs": round1(frontAt.map { $0 - t0 }),

@@ -207,3 +207,44 @@ func appletProbe(_ applet: URL, marker: String, log: ResultLog) async {
         await sleepMs(500)
     }
 }
+
+// MARK: Smoke-test input (poke mode)
+
+let spikePrefix = "io.github.picosam.sidelauder.spike."
+
+func isSpikeApp(_ pid: pid_t?) -> Bool {
+    guard let pid, pid != getpid() else { return false }
+    return NSRunningApplication(processIdentifier: pid)?.bundleIdentifier?.hasPrefix(spikePrefix) == true
+}
+
+/// Presses a hotkey or clicks the subject's square for a smoke test. A hotkey
+/// is pressed only while a spike app is in front, so an unregistered key
+/// lands in a spike window, never in Claude (I6); a click only where a spike
+/// app's window is topmost.
+@MainActor
+func poke(_ args: Args) async -> [String: Any] {
+    // --front P: bring a spike app forward first (step 1), never anything else.
+    if let pid = args.value("--front").flatMap(Int32.init) {
+        guard isSpikeApp(pid), let app = NSRunningApplication(processIdentifier: pid) else {
+            return ["poke": "front", "posted": false, "reason": "--front is not a spike app"]
+        }
+        NSApp.yieldActivation(to: app)
+        _ = app.activate(from: NSRunningApplication.current, options: [])
+        _ = await waitUntil(timeoutMs: 1000) { frontmostPid() == pid }
+    }
+    if args.has("--click-panel") {
+        let p = RailPanel().clickPoint
+        guard let n = topWindowNumber(at: p),
+              let w = (CGWindowListCopyWindowInfo([.optionIncludingWindow], CGWindowID(n)) as? [[String: Any]])?.first,
+              isSpikeApp(w[kCGWindowOwnerPID as String] as? pid_t) else {
+            return ["poke": "click", "posted": false, "reason": "no spike window topmost at the square"]
+        }
+        Poster.clickAt(p)
+        return ["poke": "click", "posted": true]
+    }
+    let n = args.int("--hotkey", -1)
+    guard (0...9).contains(n) else { return ["poke": "hotkey", "posted": false, "reason": "--hotkey 0-9"] }
+    guard isSpikeApp(frontmostPid()) else { return ["poke": "hotkey", "posted": false, "reason": "front app is not a spike app"] }
+    Poster.hotkey(keyCode: digitKeys[n], shift: args.has("--shift"))
+    return ["poke": "hotkey", "key": n, "shift": args.has("--shift"), "posted": true]
+}

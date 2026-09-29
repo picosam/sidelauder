@@ -54,6 +54,24 @@ final class HiddenSpikes {
 
     func treeCpuMs(_ pid: pid_t) -> Double { processTree(pid).compactMap(cpuMs).reduce(0, +) }
 
+    /// From the window list: is every on-screen window of `a` inside one
+    /// window of `b` that is in front of it? Chromium counts a window as
+    /// occluded only when nothing of it shows.
+    func fullyCovered(_ a: pid_t, by b: pid_t) -> Bool {
+        guard let list = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID)
+            as? [[String: Any]] else { return false }
+        func rect(_ w: [String: Any]) -> CGRect {
+            let d = w[kCGWindowBounds as String] as? [String: Double] ?? [:]
+            return CGRect(x: d["X"] ?? 0, y: d["Y"] ?? 0, width: d["Width"] ?? 0, height: d["Height"] ?? 0)
+        }
+        let normal = list.filter { ($0[kCGWindowLayer as String] as? Int) == 0 && rect($0).width > 50 }
+        let aWins = normal.enumerated().filter { ($0.element[kCGWindowOwnerPID as String] as? pid_t) == a }
+        guard !aWins.isEmpty else { return false }
+        return aWins.allSatisfy { ai in
+            normal.prefix(ai.offset).contains { ($0[kCGWindowOwnerPID as String] as? pid_t) == b && rect($0).contains(rect(ai.element)) }
+        }
+    }
+
     // MARK: S14
 
     func s14(condition: String, kind: String, revealAfter: Double?, maxSeconds: Double) async {
@@ -79,19 +97,27 @@ final class HiddenSpikes {
 
         // Apply the condition.
         var coverRestore: (AXUIElement, CGRect)?
+        var applied: [String: Any] = [:]
         switch condition {
         case "hidden":
             appA.hide()
+            applied["hidden"] = await waitUntil(timeoutMs: 1000) { appA.isHidden } != nil
         case "covered":
-            if insts.count > 1, let wa = axMainWindow(a.pid), let fa = axFrame(wa), let wb = axMainWindow(insts[1].pid),
-               let fb = axFrame(wb) {
-                _ = axSetFrame(wb, fa.insetBy(dx: -8, dy: -8))
+            if insts.count > 1, let appB = insts[1].app, let wa = axMainWindow(a.pid), let fa = axFrame(wa),
+               let wb = axMainWindow(insts[1].pid), let fb = axFrame(wb) {
+                applied["setFrame"] = axSetFrame(wb, fa.insetBy(dx: -8, dy: -8))
                 coverRestore = (wb, fb)
-                _ = act.step3(insts[1].pid)
+                _ = act.step1(appB)
+                _ = await waitUntil(timeoutMs: 500) { frontmostPid() == appB.processIdentifier }
+                if frontmostPid() != appB.processIdentifier { _ = act.step3(appB.processIdentifier) }
+                applied["fullyCovered"] = await waitUntil(timeoutMs: 1000) { self.fullyCovered(a.pid, by: appB.processIdentifier) } != nil
+            } else {
+                applied["error"] = "no windows to cover with"
             }
         default: break
         }
-        log.write(["spike": "S14", "event": "start", "condition": condition, "baselineCpuPct": baseline.map { round1($0) }])
+        log.write(["spike": "S14", "event": "start", "condition": condition, "applied": applied,
+                   "baselineCpuPct": baseline.map { round1($0) }])
 
         var revealed: Double?
         var samples: [Double] = []
@@ -107,9 +133,14 @@ final class HiddenSpikes {
             if revealed == nil, let r = revealAfter, condition != "visible", t - t0 >= r * 1000 {
                 if let (w, f) = coverRestore { _ = axSetFrame(w, f) }
                 appA.unhide()
-                _ = act.step3(a.pid)
+                // Step 1, not AX alone: AX frontmost fails right after a hide
+                // and unhide (4.2.21).
+                _ = await waitUntil(timeoutMs: 500) { !appA.isHidden }
+                _ = act.step1(appA)
+                if await waitUntil(timeoutMs: 300, { frontmostPid() == a.pid }) == nil { _ = act.step3(a.pid) }
                 revealed = t
-                log.write(["spike": "S14", "event": "revealed", "atS": round1((t - t0) / 1000)])
+                log.write(["spike": "S14", "event": "revealed", "atS": round1((t - t0) / 1000),
+                           "aFront": frontmostPid() == a.pid, "aHidden": appA.isHidden])
             }
         }
         let streaming = marks.first { $0.t > t0 && $0.id == 3 }
@@ -125,7 +156,13 @@ final class HiddenSpikes {
 
     // MARK: S15
 
-    func label(_ pid: pid_t) -> String { insts.first { $0.pid == pid }?.label ?? (pid == getpid() ? "self" : "other") }
+    /// A, B, self, another Claude copy, or "other"; never a name.
+    func label(_ pid: pid_t) -> String {
+        if let i = insts.first(where: { $0.pid == pid }) { return i.label }
+        if pid == getpid() { return "self" }
+        let bid = NSRunningApplication(processIdentifier: pid)?.bundleIdentifier ?? ""
+        return bid == "com.anthropic.claudefordesktop" ? "other-claude" : "other"
+    }
 
     func s15(clicks: Int) async {
         let hk = registerMarks()
@@ -143,8 +180,9 @@ final class HiddenSpikes {
             case 4, 5:
                 // The click came before the declaration; attribute the last
                 // Claude activation since the previous declaration.
+                // The window is from the previous mark of any kind.
                 let clicked = m.id == 4 ? "A" : "B"
-                let acts = watch.all(after: marks.filter { $0.t < m.t && $0.id != m.id }.last?.t ?? 0)
+                let acts = watch.all(after: marks.last { $0.t < m.t }?.t ?? 0)
                     .filter { $0.kind == "activate" && $0.t <= m.t && $0.pid != getpid() }
                 let activated = acts.last.map { label($0.pid) } ?? "none"
                 done += 1

@@ -22,6 +22,8 @@
 //       [--reveal-after S] [--max S]
 //   s15 --a P --b P [--c P] --clicks N
 //   restore --a P --b P                         unhide both
+//   poke [--front P] --hotkey N [--shift] | --click-panel   smoke tests only: press ⌃⌥(⇧)N, or click
+//        the subject's square, and only while a spike app is the one it reaches
 //
 // It acts only on the PIDs it is given and labels them A, B, C in its log.
 
@@ -50,7 +52,8 @@ final class Runner: NSObject, NSApplicationDelegate {
         let panel = RailPanel()
         let insts = instances(args)
         let act = ActivationSpikes(log: log, watch: watch, panel: panel, insts: insts)
-        log.write(["event": "launch", "mode": args.mode, "macOS": ProcessInfo.processInfo.operatingSystemVersionString,
+        log.write(["event": "launch", "mode": args.mode, "pid": Int(getpid()),
+                   "macOS": ProcessInfo.processInfo.operatingSystemVersionString,
                    "instances": insts.map { ["label": $0.label, "alive": $0.app != nil, "hidden": $0.app?.isHidden ?? false] }])
 
         let needTwo = ["s1", "s1-real", "s2", "s3", "s15", "restore"]
@@ -101,7 +104,7 @@ final class Runner: NSObject, NSApplicationDelegate {
             // been typed into, for S1's typed-* conditions. Runs until quit.
             NSApp.setActivationPolicy(.regular)
             let w = NSWindow(contentRect: NSRect(x: 200, y: 200, width: 420, height: 160),
-                             styleMask: [.titled], backing: .buffered, defer: false)
+                             styleMask: [.titled, .resizable], backing: .buffered, defer: false)
             w.title = "SpikeRunner typist"
             let tv = NSTextView(frame: w.contentView!.bounds)
             tv.autoresizingMask = [.width, .height]
@@ -115,6 +118,8 @@ final class Runner: NSObject, NSApplicationDelegate {
             // must be a throwaway whose script appends to --marker.
             guard let applet = args.value("--applet"), let marker = args.value("--marker") else { break }
             await appletProbe(URL(fileURLWithPath: applet), marker: marker, log: log)
+        case "poke":
+            log.write(await poke(args))
         case "restore":
             for i in insts where i.app?.isHidden == true { i.app?.unhide() }
             log.write(["event": "restored"])

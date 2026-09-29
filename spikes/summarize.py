@@ -39,7 +39,7 @@ def s1(rows):
         step0 = [r for r in pre if r.get("step0Ok") is True]
         act = [r["activateMs"] for r in ok if isinstance(r.get("activateMs"), (int, float))]
         front = [r["frontMs"] for r in ok if isinstance(r.get("frontMs"), (int, float))]
-        s0 = f"{len(step0)}/{len(pre)}" if any("step0Ok" in r for r in rs) else "–"
+        s0 = f"{len(step0)}/{len(pre)}" if any(r.get("step0Ok") is not None for r in rs) else "–"
         al = f"{len(allowed)}/{len(pre)}" if any(r.get("allowed") is not None for r in rs) else "–"
         print(f"| {cond} | {actor} | {len(rs)} | {len(pre)} | {len(ok)}/{len(pre)} | {al} | {s0} | "
               f"{fmt(pct(act, .5))} / {fmt(pct(act, .95))} | {fmt(pct(front, .5))} / {fmt(pct(front, .95))} |")
@@ -87,12 +87,36 @@ def s3(rows):
                   f"{r['actual'].get('w', 0):.0f}×{r['actual'].get('h', 0):.0f}")
 
 
+def s14(rows):
+    ends = [r for r in rows if r.get("spike") == "S14" and r.get("event") == "end"]
+    starts = [r for r in rows if r.get("spike") == "S14" and r.get("event") == "start"]
+    print("| Kind | Condition | Applied | Revealed at s | Still streaming at reveal | Finished at s | CPU median / p95 % |")
+    print("|---|---|---|---|---|---|---|")
+    for e, st in zip(ends, starts):
+        applied = ", ".join(f"{k}={v}" for k, v in st.get("applied", {}).items() if k != "setFrame") or "–"
+        print(f"| {e['kind']} | {e['condition']} | {applied} | {e.get('revealedS') or '–'} | "
+              f"{'yes' if e.get('stillStreamingAtReveal') else 'no'} | {e.get('finishedS')} | "
+              f"{e.get('cpuPctMedian')} / {e.get('cpuPctP95')} |")
+
+
+def s15(rows):
+    rs = [r for r in rows if r.get("spike") == "S15" and "click" in r]
+    if not rs:
+        return
+    print("| Click | Declared | Activated | OK | Activations seen |")
+    print("|---|---|---|---|---|")
+    for r in rs:
+        print(f"| {r['click']} | {r['clicked']} | {r['activated']} | {'yes' if r['ok'] else 'no'} | "
+              f"{', '.join(r.get('activationsSeen', []))} |")
+    print(f"\nPosting instance activated: {sum(1 for r in rs if r['ok'])}/{len(rs)}")
+
+
 def main():
     rows = []
     for f in sys.argv[1:]:
         with open(f) as fh:
             rows += [json.loads(line) for line in fh if line.strip()]
-    for name, fn in (("S1", s1), ("S2", s2), ("S3", s3)):
+    for name, fn in (("S1", s1), ("S2", s2), ("S3", s3), ("S14", s14), ("S15", s15)):
         if any(r.get("spike") == name for r in rows):
             print(f"\n### {name}\n")
             fn(rows)
