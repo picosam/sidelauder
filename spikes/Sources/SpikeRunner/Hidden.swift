@@ -124,11 +124,11 @@ final class HiddenSpikes {
         last = treeCpuMs(a.pid); lastT = nowMs()
         var finished: (id: UInt32, t: Double)?
         while finished == nil && nowMs() - t0 < maxSeconds * 1000 {
-            finished = await nextMark(after: t0, among: [2, 9], timeoutMs: 1000)
+            finished = await nextMark(after: t0, among: [2, 9], timeoutMs: 250)
             let c = treeCpuMs(a.pid), t = nowMs()
             let pct = (c - last) / (t - lastT) * 100
             samples.append(pct)
-            log.write(["spike": "S14", "sample": round1((t - t0) / 1000), "cpuPct": round1(pct), "hidden": appA.isHidden])
+            log.write(["spike": "S14", "sample": (t - t0).rounded() / 1000, "cpuPct": round1(pct), "hidden": appA.isHidden])
             last = c; lastT = t
             if revealed == nil, let r = revealAfter, condition != "visible", t - t0 >= r * 1000 {
                 if let (w, f) = coverRestore { _ = axSetFrame(w, f) }
